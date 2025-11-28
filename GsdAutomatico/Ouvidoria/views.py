@@ -976,7 +976,117 @@ def index(request):
             else:
                 return JsonResponse({'status': 'error', 'errors': form.errors.as_json()}, status=400)
 
+        # --- NOVO BLOCO 1: Busca Dinâmica (Search Bar) ---
+        elif action == 'search_militar':
+            term = request.POST.get('term', '').strip()
+            if not term or len(term) < 2:
+                return JsonResponse({'results': []})
+            
+            # Busca por Nome de Guerra ou Nome Completo ou SARAM
+            militares = Militar.objects.filter(
+                Q(nome_guerra__icontains=term) |
+                Q(nome_completo__icontains=term) |
+                Q(saram__icontains=term)
+            )[:10] # Limita a 10 resultados para não pesar
 
+            results = []
+            for m in militares:
+                results.append({
+                    'id': m.id,
+                    'nome_guerra': m.nome_guerra,
+                    'nome_completo': m.nome_completo,
+                    'saram': m.saram or 'N/A'
+                })
+            
+            return JsonResponse({'results': results})
+
+        # --- NOVO BLOCO 2: Associar Transgressão a Militar Existente ---
+        # --- BLOCO 2 ATUALIZADO: Associar Transgressão com Verificação de Duplicidade ---
+        elif action == 'associate_patd':
+            militar_id = request.POST.get('militar_id')
+            if not militar_id:
+                return JsonResponse({'status': 'error', 'message': 'ID do militar não fornecido.'}, status=400)
+            
+            militar = get_object_or_404(Militar, pk=militar_id)
+            
+            # Recupera os dados
+            transgressao = request.POST.get('transgressao', '')
+            protocolo_comaer = request.POST.get('protocolo_comaer', '')
+            oficio_transgressao = request.POST.get('oficio_transgressao', '')
+            
+            # --- Tratamento de Datas ---
+            data_ocorrencia_str = request.POST.get('data_ocorrencia')
+            data_oficio_str = request.POST.get('data_oficio', '')
+
+            data_ocorrencia = None
+            if data_ocorrencia_str:
+                try:
+                    data_ocorrencia = datetime.strptime(data_ocorrencia_str, '%Y-%m-%d').date()
+                except (ValueError, TypeError):
+                    pass
+
+            data_oficio = None
+            if data_oficio_str:
+                cleaned_data_oficio_str = re.sub(r"^[A-Za-z\s]+,\s*", "", data_oficio_str).strip()
+                formats_to_try = ['%d/%m/%Y', '%d de %B de %Y', '%Y-%m-%d', '%d.%m.%Y']
+                for fmt in formats_to_try:
+                    try:
+                        if '%B' in fmt:
+                            try:
+                                locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
+                            except locale.Error:
+                                continue
+                        data_oficio = datetime.strptime(cleaned_data_oficio_str, fmt).date()
+                        break
+                    except (ValueError, TypeError):
+                        continue
+            
+            # =================================================================
+            # NOVA LOGICA: VERIFICAÇÃO DE DUPLICIDADE
+            # =================================================================
+            # 1. Busca PATDs desse militar na mesma data
+            existing_patds = PATD.objects.filter(militar=militar, data_ocorrencia=data_ocorrencia)
+            
+            # 2. Compara o texto da transgressão
+            is_duplicate = False
+            duplicated_patd_num = None
+
+            for patd_existente in existing_patds:
+                # Usa SequenceMatcher para comparar similaridade (acima de 80%)
+                similarity = SequenceMatcher(None, transgressao.strip().lower(), patd_existente.transgressao.strip().lower()).ratio()
+                if similarity > 0.8:
+                    is_duplicate = True
+                    duplicated_patd_num = patd_existente.numero_patd
+                    break
+            
+            if is_duplicate:
+                return JsonResponse({
+                    'status': 'error', 
+                    'message': f'Ação bloqueada: Já existe a PATD Nº {duplicated_patd_num} para o militar {militar.nome_guerra} nesta data com teor similar.'
+                })
+            # =================================================================
+
+            # Se não for duplicada, cria a PATD normalmente
+            try:
+                patd = PATD.objects.create(
+                    militar=militar,
+                    transgressao=transgressao,
+                    numero_patd=get_next_patd_number(),
+                    data_ocorrencia=data_ocorrencia,
+                    protocolo_comaer=protocolo_comaer,
+                    oficio_transgressao=oficio_transgressao,
+                    data_oficio=data_oficio
+                )
+                
+                return JsonResponse({
+                    'status': 'success', 
+                    'militar_nome': militar.nome_guerra,
+                    'message': f'PATD Nº {patd.numero_patd} criada com sucesso para {militar.nome_guerra}.'
+                })
+            except Exception as e:
+                logger.error(f"Erro ao associar PATD: {e}")
+                return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            
         # --- Modificação na ação 'analyze' ---
         elif action == 'analyze':
             pdf_file = request.FILES.get('pdf_file')

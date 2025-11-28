@@ -33,6 +33,91 @@
     .alert-error { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; } /* Estilo para erros no form dinâmico */
     .militar-nao-encontrado .form-grid { grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; } /* Ajuste grid form dinâmico */
     .militar-nao-encontrado .form-actions { margin-top: 15px; justify-content: flex-start;}
+    /* --- Adicione isso ao seu bloco <style> --- */
+
+    .search-wrapper {
+        position: relative;
+        width: 100%;
+        margin-bottom: 15px;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23999' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z' /%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        background-size: 18px;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1); /* Ajuste conforme sua cor */
+    }
+
+    .search-results-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+        display: none; /* Oculto por padrão */
+        margin-top: 5px;
+    }
+
+    .search-item {
+        padding: 10px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+        font-size: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .search-item:last-child {
+        border-bottom: none;
+    }
+
+    .search-item:hover {
+        background-color: var(--sidebar-active-bg);
+        color: var(--accent-color);
+    }
+
+    .search-item small {
+        color: #888;
+        font-size: 12px;
+    }
+
+    .divisor-ou {
+        text-align: center;
+        margin: 10px 0;
+        font-size: 12px;
+        color: #999;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+    }
+
+    .divisor-ou::before, .divisor-ou::after {
+        content: "";
+        flex: 1;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .divisor-ou::before { margin-right: 10px; }
+    .divisor-ou::after { margin-left: 10px; }
 </style>
 
 <h1>Analisador de Documentos</h1>
@@ -72,21 +157,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const analiseBox = document.getElementById('analise-box');
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 
+    // --- Lógica de Upload e Drag & Drop ---
     if (fileInput) {
         fileInput.addEventListener('change', function() {
             if (this.files && this.files.length > 0) {
-                 // Verifica se é um PDF ao selecionar
                 if (this.files[0].type === "application/pdf") {
                     fileLabelText.textContent = this.files[0].name;
-                    fileLabel.style.borderColor = 'var(--border-color)'; // Volta a borda normal
+                    fileLabel.style.borderColor = 'var(--border-color)';
                 } else {
                     fileLabelText.textContent = 'Apenas ficheiros PDF são permitidos!';
                     fileLabel.style.borderColor = 'var(--danger-color)';
-                    this.value = ''; // Limpa a seleção inválida
-                    // Restaura a borda após um tempo
+                    this.value = '';
                     setTimeout(() => {
                         fileLabel.style.borderColor = 'var(--border-color)';
-                        if (!this.files || this.files.length === 0) { // Se ainda não houver ficheiro
+                        if (!this.files || this.files.length === 0) {
                              fileLabelText.textContent = 'Clique ou arraste o ficheiro PDF';
                         }
                     }, 2000);
@@ -128,29 +212,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (files.length) {
             if (files[0].type === "application/pdf") {
-                fileInput.files = files; // Associa o ficheiro ao input
+                fileInput.files = files;
                 fileLabelText.textContent = files[0].name;
                 fileLabel.style.borderColor = 'var(--success-color)';
             } else {
                 fileLabelText.textContent = 'Apenas ficheiros PDF são permitidos!';
                 fileLabel.style.borderColor = 'var(--danger-color)';
-                fileInput.value = ''; // Limpa se for inválido
+                fileInput.value = '';
             }
         }
 
         setTimeout(() => {
              fileLabel.style.borderColor = 'var(--border-color)';
              fileLabel.style.backgroundColor = 'transparent';
-             // Mantém o nome do ficheiro se for válido, ou volta ao texto padrão se inválido/vazio
              if (!fileInput.files || fileInput.files.length === 0) {
                  fileLabelText.textContent = 'Clique ou arraste o ficheiro PDF';
              }
         }, 1500);
     }
 
+    // --- Funções Auxiliares de HTML ---
+
+    function escapeHtml(unsafe) {
+        if (typeof unsafe !== 'string') return '';
+        return unsafe
+             .replace(/&/g, "&amp;")
+             .replace(/</g, "&lt;")
+             .replace(/>/g, "&gt;")
+             .replace(/"/g, "&quot;")
+             .replace(/'/g, "&#039;");
+    }
+
     function handlePatdExists(duplicataData) {
         return `
-            <div class="resultado-item alert alert-warning"> {# Usa classe alert #}
+            <div class="resultado-item alert alert-warning">
                 <h4>PATD Duplicada</h4>
                 <p>Já existe uma PATD similar (Nº ${duplicataData.numero_patd}) para o militar <strong>${escapeHtml(duplicataData.nome_militar)}</strong>.</p>
                 <div class="prompt-actions">
@@ -160,75 +255,171 @@ document.addEventListener('DOMContentLoaded', function() {
         `;
     }
 
+    // --- NOVA FUNÇÃO: Militar Não Encontrado com Search Bar ---
     function handleMilitarNotFound(militarData, index) {
         const formId = `create-militar-form-${index}`;
-        const nameId = `id_nome_completo-${index}`;
-        const warNameId = `id_nome_guerra-${index}`;
-        const saramId = `id_saram-${index}`;
-        const postId = `id_posto-${index}`;
-        const createBtnId = `create-militar-btn-${index}`;
-
-        // Assegura que os valores são strings vazias se forem null ou undefined
-        const transgressao = militarData.transgressao || '';
-        const dataOcorrencia = militarData.data_ocorrencia || '';
-        const protocoloComaer = militarData.protocolo_comaer || '';
-        const oficioTransgressao = militarData.oficio_transgressao || '';
-        const dataOficio = militarData.data_oficio || '';
-        const nomeSugerido = militarData.nome_completo_sugerido || '';
-
-
+        const searchInputId = `search-militar-${index}`;
+        const searchResultsId = `search-results-${index}`;
+        
+        // Converte objeto para string para passar no data attribute
+        const transgressaoJson = JSON.stringify(militarData).replace(/'/g, "&apos;");
+        
         return `
             <div class="militar-nao-encontrado resultado-item">
                 <h4>Militar Não Encontrado</h4>
-                <p>O militar <strong>${escapeHtml(nomeSugerido)}</strong> não foi encontrado. Preencha os dados abaixo para cadastrá-lo e criar a PATD.</p>
+                <p>O militar <strong>${escapeHtml(militarData.nome_completo_sugerido)}</strong> não foi encontrado.</p>
+                
+                <div class="search-wrapper">
+                    <input type="text" 
+                           class="search-input dynamic-search" 
+                           id="${searchInputId}" 
+                           data-index="${index}" 
+                           data-meta='${transgressaoJson}'
+                           placeholder="Pesquisar militar existente (Ex: Alesson)..." autocomplete="off">
+                    <div class="search-results-dropdown" id="${searchResultsId}"></div>
+                </div>
+
+                <div class="divisor-ou">OU CADASTRAR NOVO</div>
+
+                <p style="font-size: 0.9em; margin-bottom: 10px;">Se o militar não existe no banco, preencha abaixo:</p>
+
                 <form id="${formId}" class="model-form create-militar-dynamic-form" data-index="${index}">
-                    {# Campos ocultos para passar os dados da transgressão #}
-                    <input type="hidden" name="transgressao" value="${escapeHtml(transgressao)}">
-                    <input type="hidden" name="data_ocorrencia" value="${escapeHtml(dataOcorrencia)}">
-                    <input type="hidden" name="protocolo_comaer" value="${escapeHtml(protocoloComaer)}">
-                    <input type="hidden" name="oficio_transgressao" value="${escapeHtml(oficioTransgressao)}">
-                    <input type="hidden" name="data_oficio" value="${escapeHtml(dataOficio)}">
-                    {# Campos visíveis para o cadastro do militar #}
-                    <div class="form-grid">
-                        <p><label for="${nameId}">Nome Completo:</label><input type="text" name="nome_completo" value="${escapeHtml(nomeSugerido)}" required id="${nameId}"></p>
-                        <p><label for="${warNameId}">Nome de Guerra:</label><input type="text" name="nome_guerra" required id="${warNameId}"></p>
-                        <p><label for="${saramId}">SARAM:</label><input type="number" name="saram" id="${saramId}"></p>
-                        <p><label for="${postId}">Posto/Grad.:</label><input type="text" name="posto" id="${postId}"></p>
-                    </div>
+                    <input type="hidden" name="transgressao" value="${escapeHtml(militarData.transgressao || '')}">
+                    <input type="hidden" name="data_ocorrencia" value="${escapeHtml(militarData.data_ocorrencia || '')}">
+                    <input type="hidden" name="protocolo_comaer" value="${escapeHtml(militarData.protocolo_comaer || '')}">
+                    <input type="hidden" name="oficio_transgressao" value="${escapeHtml(militarData.oficio_transgressao || '')}">
+                    <input type="hidden" name="data_oficio" value="${escapeHtml(militarData.data_oficio || '')}">
+
                     <div class="form-actions">
-                        <button type="submit" id="${createBtnId}" class="btn btn-primary btn-sm">Cadastrar e Criar PATD</button>
+                        <button type="submit" class="btn btn-primary btn-sm">Cadastrar e Criar PATD</button>
                     </div>
-                     {# Container para feedback do form dinâmico #}
                     <div class="dynamic-form-feedback" style="margin-top: 10px;"></div>
                 </form>
             </div>
         `;
     }
 
-    function escapeHtml(unsafe) {
-        if (typeof unsafe !== 'string') {
-            return ''; // Retorna string vazia se não for string
-        }
-        return unsafe
-             .replace(/&/g, "&amp;")
-             .replace(/</g, "&lt;")
-             .replace(/>/g, "&gt;")
-             .replace(/"/g, "&quot;")
-             .replace(/'/g, "&#039;");
+    // --- Lógica da Search Bar (Debounce e Eventos) ---
+
+    function debounce(func, wait) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
     }
 
+    // Listener global para inputs de busca dinâmica
+    document.body.addEventListener('input', debounce(function(e) {
+        if (e.target.classList.contains('dynamic-search')) {
+            const query = e.target.value;
+            const index = e.target.dataset.index;
+            const resultsBox = document.getElementById(`search-results-${index}`);
+            let metaDataStr = e.target.dataset.meta;
+            
+            if (query.length < 2) {
+                resultsBox.style.display = 'none';
+                return;
+            }
 
+            const formData = new FormData();
+            formData.append('action', 'search_militar');
+            formData.append('term', query);
+
+            fetch("{% url 'Ouvidoria:index' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                resultsBox.innerHTML = '';
+                if (data.results && data.results.length > 0) {
+                    resultsBox.style.display = 'block';
+                    data.results.forEach(militar => {
+                        const item = document.createElement('div');
+                        item.className = 'search-item';
+                        item.innerHTML = `
+                            <span>${escapeHtml(militar.nome_guerra)} <small>(${escapeHtml(militar.nome_completo)})</small></span>
+                            <small>SARAM: ${militar.saram || 'N/A'}</small>
+                        `;
+                        item.addEventListener('click', () => {
+                            try {
+                                const metaData = JSON.parse(metaDataStr);
+                                associarMilitarExistente(militar.id, metaData, index);
+                            } catch(err) {
+                                console.error("Erro ao parsear metadata", err);
+                            }
+                        });
+                        resultsBox.appendChild(item);
+                    });
+                } else {
+                    resultsBox.style.display = 'block';
+                    resultsBox.innerHTML = '<div class="search-item" style="cursor: default; color: #888;">Nenhum militar encontrado.</div>';
+                }
+            })
+            .catch(err => console.error("Erro na busca:", err));
+        }
+    }, 400));
+
+    // Fecha dropdown ao clicar fora
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.search-wrapper')) {
+            document.querySelectorAll('.search-results-dropdown').forEach(el => el.style.display = 'none');
+        }
+    });
+
+    function associarMilitarExistente(militarId, transgressaoData, index) {
+        const feedbackContainer = document.querySelector(`#create-militar-form-${index} .dynamic-form-feedback`);
+        const searchInput = document.getElementById(`search-militar-${index}`);
+        const resultsBox = document.getElementById(`search-results-${index}`);
+        
+        searchInput.disabled = true;
+        resultsBox.style.display = 'none';
+        feedbackContainer.innerHTML = '<div class="alert alert-info">⌛ Vinculando PATD ao militar selecionado...</div>';
+
+        const formData = new FormData();
+        formData.append('action', 'associate_patd');
+        formData.append('militar_id', militarId);
+        
+        for (const key in transgressaoData) {
+            formData.append(key, transgressaoData[key]);
+        }
+
+        fetch("{% url 'Ouvidoria:index' %}", {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken },
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            const container = document.querySelector(`#create-militar-form-${index}`).parentElement;
+            if (data.status === 'success') {
+                container.innerHTML = `<div class="alert alert-success">✅ PATD criada e vinculada com sucesso ao militar <strong>${escapeHtml(data.militar_nome)}</strong>!</div>`;
+            } else {
+                feedbackContainer.innerHTML = `<div class="alert alert-error">❌ Erro ao vincular: ${data.message}</div>`;
+                searchInput.disabled = false;
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            feedbackContainer.innerHTML = `<div class="alert alert-error">❌ Erro de conexão.</div>`;
+            searchInput.disabled = false;
+        });
+    }
+
+    // --- Submissão de Formulários Dinâmicos (Criar Novo) ---
     analiseBox.addEventListener('submit', function(e) {
         if (e.target && e.target.classList.contains('create-militar-dynamic-form')) {
             e.preventDefault();
             const form = e.target;
             const index = form.dataset.index;
             const createBtn = form.querySelector('button[type="submit"]');
-            const feedbackContainer = form.querySelector('.dynamic-form-feedback'); // Seleciona o container de feedback
+            const feedbackContainer = form.querySelector('.dynamic-form-feedback');
 
             createBtn.textContent = 'Aguarde...';
             createBtn.disabled = true;
-            feedbackContainer.innerHTML = ''; // Limpa feedback anterior
+            feedbackContainer.innerHTML = '';
 
             const militarFormData = new FormData(form);
             militarFormData.append('action', 'create_militar_and_patd');
@@ -242,7 +433,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 const formContainer = form.parentElement;
                 if (data.status === 'success') {
-                    // Substitui o formulário pela mensagem de sucesso
                     formContainer.innerHTML = `<div class="alert alert-success">✅ ${escapeHtml(data.message)}</div>`;
                 } else {
                     let errorMsg = "Não foi possível cadastrar o militar.";
@@ -250,36 +440,30 @@ document.addEventListener('DOMContentLoaded', function() {
                          try {
                              const errors = JSON.parse(data.errors);
                              const firstFieldName = Object.keys(errors)[0];
-                             // Verifica se a estrutura de erro é a esperada pelo Django
                              if(errors[firstFieldName] && errors[firstFieldName][0] && (errors[firstFieldName][0].message || errors[firstFieldName][0])){
                                  errorMsg += ` (${escapeHtml(errors[firstFieldName][0].message || errors[firstFieldName][0])})`;
-                             } else {
-                                 errorMsg += ` (Erro de validação desconhecido)`;
                              }
-
                          } catch (parseError) {
-                             console.error("Erro ao parsear JSON de erros:", parseError, data.errors);
-                              errorMsg += ` (Detalhe: ${escapeHtml(data.errors)})`;
+                             errorMsg += ` (Detalhe: ${escapeHtml(data.errors)})`;
                          }
                     } else if (data.message) {
-                        errorMsg = data.message; // Usa a mensagem de erro geral se não houver 'errors'
+                        errorMsg = data.message;
                     }
-                     // Mostra o erro DENTRO do container de feedback, sem remover o formulário
                     feedbackContainer.innerHTML = `<div class="alert alert-error">❌ ${escapeHtml(errorMsg)}</div>`;
-                    createBtn.textContent = 'Cadastrar e Criar PATD'; // Restaura o botão
+                    createBtn.textContent = 'Cadastrar e Criar PATD';
                     createBtn.disabled = false;
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                feedbackContainer.innerHTML = `<div class="alert alert-error">❌ Ocorreu um erro de comunicação. Tente novamente.</div>`;
-                createBtn.textContent = 'Cadastrar e Criar PATD'; // Restaura o botão
+                feedbackContainer.innerHTML = `<div class="alert alert-error">❌ Ocorreu um erro de comunicação.</div>`;
+                createBtn.textContent = 'Cadastrar e Criar PATD';
                 createBtn.disabled = false;
             });
         }
     });
 
-
+    // --- Event Listener do Botão de Upload ---
     submitButton.addEventListener('click', () => {
         if (!fileInput.files || fileInput.files.length === 0) {
             alert('Por favor, selecione um ficheiro PDF antes de analisar.');
@@ -289,7 +473,6 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Apenas ficheiros PDF são permitidos!');
             return;
         }
-
 
         const formData = new FormData();
         formData.append('pdf_file', fileInput.files[0]);
@@ -304,22 +487,18 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => {
             if (!response.ok) {
-                // Tenta ler o corpo como JSON primeiro, caso o backend retorne um erro JSON
                  return response.json().catch(() => {
-                    // Se falhar ao parsear JSON, lê como texto (erro HTML do Django, por exemplo)
                     return response.text().then(text => {
-                        throw new Error(`Erro ${response.status}: ${response.statusText} - ${text.substring(0, 500)}`); // Limita o tamanho do texto
+                        throw new Error(`Erro ${response.status}: ${text.substring(0, 500)}`);
                     });
                 }).then(errorData => {
-                     // Se conseguiu parsear JSON, lança erro com a mensagem do JSON
-                     throw new Error(errorData.message || errorData.detail || `Erro ${response.status}`);
+                      throw new Error(errorData.message || errorData.detail || `Erro ${response.status}`);
                  });
             }
             return response.json();
         })
         .then(data => {
             let htmlResult = '';
-
             if (data.status === 'processed') {
                 htmlResult += '<h3>Resultado da Análise</h3>';
                 let hasContent = false;
@@ -330,14 +509,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     hasContent = true;
                 }
-
                 if (data.militares_nao_encontrados && data.militares_nao_encontrados.length > 0) {
                     data.militares_nao_encontrados.forEach((militar, index) => {
                         htmlResult += handleMilitarNotFound(militar, index);
                     });
                     hasContent = true;
                 }
-
                 if (data.duplicatas_encontradas && data.duplicatas_encontradas.length > 0) {
                     data.duplicatas_encontradas.forEach(dup => {
                         htmlResult += handlePatdExists(dup);
@@ -345,28 +522,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     hasContent = true;
                 }
 
-                if (!hasContent && data.status === 'processed') { // Verifica o status novamente
-                     htmlResult += '<p class="alert alert-info">A análise foi concluída, mas nenhuma ação foi identificada (nenhuma PATD criada, nenhum militar não encontrado, nenhuma duplicata).</p>';
-                } else if (!hasContent){
-                     // Se não houve conteúdo mas o status não é 'processed', pode ser um erro não capturado antes
-                     console.warn("Status 'processed' mas sem conteúdo relevante:", data);
-                     htmlResult += '<p class="alert alert-warning">A análise foi concluída, mas nenhuma informação relevante foi extraída ou processada.</p>';
+                if (!hasContent) {
+                     htmlResult += '<p class="alert alert-info">A análise foi concluída, mas nenhuma ação foi identificada.</p>';
                 }
-
                 displayResult(htmlResult);
-
             } else if (data.status === 'error') {
-                 displayResult(`<h3 style="color: var(--danger-color);">Erro na Análise</h3><p>${escapeHtml(data.message || 'Erro desconhecido.')}</p>${data.detail ? `<small>Detalhe: ${escapeHtml(data.detail)}</small>` : ''}`);
-            }
-             else {
-                 console.error("Resposta inesperada do servidor:", data);
-                 displayResult(`<h3 style="color: var(--danger-color);">Erro Inesperado</h3><p>O servidor retornou uma resposta inesperada. Verifique os logs.</p>`);
+                 displayResult(`<h3 style="color: var(--danger-color);">Erro na Análise</h3><p>${escapeHtml(data.message || 'Erro desconhecido.')}</p>`);
+            } else {
+                 displayResult(`<h3 style="color: var(--danger-color);">Erro Inesperado</h3><p>O servidor retornou uma resposta inesperada.</p>`);
             }
         })
         .catch(error => {
             console.error('Erro no fetch:', error);
-            // Garante que error.message exista e seja uma string
-            const errorMessage = (error && error.message) ? String(error.message) : 'Não foi possível comunicar com o servidor ou ocorreu um erro inesperado.';
+            const errorMessage = (error && error.message) ? String(error.message) : 'Erro inesperado.';
             displayResult(`<h3 style="color: var(--danger-color);">Erro na Análise</h3><p>${escapeHtml(errorMessage)}</p>`);
         })
         .finally(() => {
