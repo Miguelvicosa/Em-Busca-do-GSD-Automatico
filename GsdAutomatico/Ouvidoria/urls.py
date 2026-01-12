@@ -25,7 +25,6 @@ urlpatterns = [
     path('patd/<int:pk>/salvar_alegacao_defesa/', views.salvar_alegacao_defesa, name='salvar_alegacao_defesa'),
     path('patd/<int:pk>/salvar_assinatura_defesa/', views.salvar_assinatura_defesa, name='salvar_assinatura_defesa'),
     path('patd/<int:pk>/salvar_assinatura_reconsideracao/', views.salvar_assinatura_reconsideracao, name='salvar_assinatura_reconsideracao'),
-    path('patd/<int:pk>/salvar_ficha_individual/', views.salvar_ficha_individual, name='salvar_ficha_individual'),
     path('patd/<int:pk>/extender_prazo/', views.extender_prazo, name='extender_prazo'),
     path('patd/<int:pk>/prosseguir_sem_alegacao/', views.prosseguir_sem_alegacao, name='prosseguir_sem_alegacao'), 
     path('patd/<int:pk>/salvar_assinatura_testemunha/<int:testemunha_num>/', views.salvar_assinatura_testemunha, name='salvar_assinatura_testemunha'),

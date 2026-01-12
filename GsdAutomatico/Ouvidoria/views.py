@@ -446,17 +446,6 @@ def _get_document_context(patd):
 
     localidade_value = patd.circunstancias.get('localidade', 'Rio de Janeiro') if patd.circunstancias else 'Rio de Janeiro'
 
-    ficha_individual_anexo = Anexo.objects.filter(patd=patd, tipo='ficha_individual').last()
-    ficha_individual_html = '{botao_gerar_ficha_individual}'
-    if ficha_individual_anexo:
-        file_url = ficha_individual_anexo.arquivo.url
-        file_name = os.path.basename(ficha_individual_anexo.arquivo.name)
-        ext = os.path.splitext(file_name)[1].lower()
-        if ext in ['.jpg', '.jpeg', '.png', '.gif']:
-            ficha_individual_html = f'<img src="{file_url}" alt="Ficha Individual" style="max-width: 100%; height: auto;">'
-        else:
-            ficha_individual_html = f'<a href="{file_url}" target="_blank">Ver Ficha Individual: {file_name}</a>'
-    
     context = {
         # Placeholders Comuns
         # --- CORREÇÃO: Usar staticfiles_storage.url ---
@@ -493,7 +482,6 @@ def _get_document_context(patd):
         '{Oficio Transgressao}': patd.oficio_transgressao,
         '{data_oficio}': data_oficio_fmt,
         '{comprovante}': patd.comprovante or '',
-        '{ficha_individual}': ficha_individual_html,
 
         # Dados da Apuração
         '{Itens enquadrados}': itens_enquadrados_str,
@@ -557,7 +545,6 @@ def _get_document_context(patd):
 def _render_document_from_template(template_name, context):
     """
     Função genérica para renderizar um documento .docx a partir de um template,
-
     preservando o alinhamento e convertendo para HTML.
     AGORA SUPORTA O PLACEHOLDER {nova_pagina}
     """
@@ -3029,10 +3016,6 @@ def exportar_patd_docx(request, pk):
 
                                 elif placeholder == '{Assinatura Reconsideracao}' and patd.assinatura_reconsideracao and patd.assinatura_reconsideracao.path and os.path.exists(patd.assinatura_reconsideracao.path):
                                      p.add_run().add_picture(patd.assinatura_reconsideracao.path, height=Cm(1.5))
-                                     is_image_placeholder = True
-
-                                elif placeholder == '{botao_gerar_ficha_individual}':
-                                     p.add_run("botao aqui").bold = True
                                      is_image_placeholder = True
 
                                 elif placeholder == '{Brasao da Republica}':
